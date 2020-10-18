@@ -1,1 +1,116 @@
 
+1. git生成key
+git config --global user.name "Your Name"
+git config --global user.email "email@example.com"
+
+ssh-keygen -t rsa -C "youremail@example.com"
+在C:\Users\hp\.ssh下会生成公钥
+
+
+redis安装过程中可能会出现的问题？
+1. fatal error: jemalloc/jemalloc.h: No such file or directory 错误
+错误原因是上次安装失败的残留文件导致的，需要删除上次的安装残留
+make distclean  && make
+https://blog.csdn.net/baidu_38558076/article/details/106303896
+
+
+2.error: ‘struct redisServer’ has no member named ‘maxmemory’
+centos的gcc版本低于5.3导致的，需要将gcc版本升级
+
+# 查看gcc版本是否在5.3以上，centos7.6默认安装4.8.5
+gcc -v
+# 升级gcc到5.3及以上,如下：
+升级到gcc 9.3：
+yum -y install centos-release-scl
+yum -y install devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
+scl enable devtoolset-9 bash
+需要注意的是scl命令启用只是临时的，退出shell或重启就会恢复原系统gcc版本。
+如果要长期使用gcc 9.3的话：
+ 
+echo "source /opt/rh/devtoolset-9/enable" >>/etc/profile
+这样退出shell重新打开就是新版的gcc了
+以下其他版本同理，修改devtoolset版本号即可
+
+https://my.oschina.net/u/1020373/blog/4608626
+
+3.redis保存的key和value莫名出现16进制的异常数据？
+
+出现该问题的原因是，同一个应用包中的redis template之前为向redis存放使用java对象序列化的值，序列化方式和string的一般方式不同。
+解决的办法，兼容原来的功能，重新配置一个redis template客户端实例，设定value的序列化方式为org.springframework.data.redis.serializer.StringRedisSerializer
+    @Bean("redisStringTemplate")
+    public RedisTemplate<Object, Object> redisStringTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(factory);
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(new StringRedisSerializer());
+        return redisTemplate;
+    }
+
+2.redis 安装
+
+下载redis需要 编译，所以需要预先安装gcc
+a.安装gcc
+yum install -y gcc
+
+
+# 回到 /usr/local/matrix/ 目录下
+1.下载资源
+wget http://download.redis.io/releases/redis-6.0.3.tar.gz
+
+2.解压
+tar xzf redis-6.0.3.tar.gz
+
+3.切换Redis目录
+cd redis-6.0.3
+
+4.安装
+4.1 make
+make 成功会显示如下信息
+Hint: It's a good idea to run 'make test' ;)
+
+4.2 make test
+make test 成功显示如下信息
+\o/ All tests passed without errors!
+
+Cleanup: may take some time... OK
+
+4.3 make install
+redis 安装成功
+Hint: It's a good idea to run 'make test' ;)
+
+    INSTALL install
+    INSTALL install
+    INSTALL install
+    INSTALL install
+    INSTALL install
+
+5.检测是否安装成功
+5.1启动 redis
+（1）src/redis-server &  -- &：表示使redis以后台程序方式运行
+（2）redis-server /usr/local/kencery/redis/redis.conf 
+
+5.2 检测redis默认端口是否在使用中，如在使用则安装程。
+netstat -ntlp grep 6379
+
+5.3 测试
+src/redis-cli
+-- 进行key设值读值检测
+
+5.4 关闭 redis
+src/redis-cli shutdown
+
+6. 修改redis.conf配置
+vi redis.conf
+
+-- 添加密码，找到 requirepass 
+requirepass ****（添加自己的密码）
+
+-- 设置后台开启
+daemonize yes
+
+-- 外部访问
+bind 0.0.0.0
+
+7.修改配置 重启Redis验证
+auth pwd -- 密码访问redis
+exit -- 退出 redis-cli
